@@ -8,7 +8,7 @@
 - 代码编辑：Monaco Editor，支持 HTML、CSS、JavaScript
 - 实时预览：独立预览窗口，支持桌面、平板和手机画布尺寸
 - 项目管理：浏览器本地保存、打开和删除项目
-- 项目迁移：导入 ZIP，导出包含 HTML/CSS/JS 的 ZIP
+- 通用源码 ZIP：导入任意 UTF-8 文本源码/配置文件项目（Kotlin、Java、Python、JS/TS、C/C++、Go、Rust、Swift、Dart、PHP、Shell、HTML/CSS 等），保留原目录结构与二进制资源；在文件列表中逐个查看、编辑源码并完整导出 ZIP
 - PWA：支持安装到桌面/主屏幕，并缓存应用外壳以便再次打开
 - Android：通过 Capacitor 和 GitHub Actions 构建 APK
 
