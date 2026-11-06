@@ -11,6 +11,7 @@ import {
 type Tab = 'design' | 'code' | 'preview';
 type CodeTab = 'html' | 'css' | 'js';
 type Project = { name: string; html: string; css: string; js: string; updatedAt: number };
+type ArchiveEntry = { path: string; text: boolean };
 const STORAGE_KEY = 'webapp-studio-project-v1';
 const starterHtml = `<main class="page">
   <nav class="nav"><div class="brand">Your<span>App</span></div><a href="#features">功能</a><a href="#about">关于</a><button class="nav-btn">开始使用</button></nav>
@@ -36,6 +37,10 @@ export default function App() {
   const [notice, setNotice] = useState('');
   const [projectList, setProjectList] = useState<Project[]>([]);
   const [showProjects, setShowProjects] = useState(false);
+  const archiveRef = useRef<JSZip | null>(null);
+  const [archiveEntries, setArchiveEntries] = useState<ArchiveEntry[]>([]);
+  const [archiveText, setArchiveText] = useState<Record<string, string>>({});
+  const [selectedArchivePath, setSelectedArchivePath] = useState('');
 
   const srcDoc = useMemo(() => `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>${css}</style></head><body>${html}<script>${js.split('</script').join('<\\/script')}<\/script></body></html>`, [html, css, js]);
 
@@ -92,6 +97,15 @@ export default function App() {
   };
 
   const exportZip = async () => {
+    if (archiveRef.current && archiveEntries.length) {
+      const archive = archiveRef.current;
+      for (const [path, content] of Object.entries(archiveText)) archive.file(path, content);
+      const archiveBlob = await archive.generateAsync({ type: 'blob' });
+      const archiveUrl = URL.createObjectURL(archiveBlob);
+      const archiveLink = document.createElement('a');
+      archiveLink.href = archiveUrl; archiveLink.download = (projectName || 'source-project') + '.zip'; archiveLink.click();
+      URL.revokeObjectURL(archiveUrl); notify('完整项目 ZIP 已导出'); return;
+    }
     const zip = new JSZip();
     zip.file('index.html', `<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${projectName}</title><link rel="stylesheet" href="style.css"></head><body>${html}<script src="script.js"><\/script></body></html>`);
     zip.file('style.css', css); zip.file('script.js', js);
@@ -108,22 +122,44 @@ export default function App() {
     reader.onload = async () => {
       try {
         const zip = await JSZip.loadAsync(reader.result as ArrayBuffer);
-        const h = zip.file('index.html'); const c = zip.file('style.css'); const j = zip.file('script.js');
+        const entries = Object.values(zip.files).filter(entry => !entry.dir);
+        const sourceExt = /\.(html?|css|scss|sass|less|js|jsx|mjs|cjs|ts|tsx|vue|svelte|json|jsonc|json5|xml|svg|kt|kts|java|gradle|properties|py|pyi|pyw|ipynb|go|rs|c|h|cc|cpp|hpp|cs|fs|swift|m|mm|dart|php|rb|r|lua|sh|bash|zsh|ps1|bat|cmd|sql|yaml|yml|toml|ini|cfg|conf|env|md|mdx|txt|graphql|gql|proto)$/i;
+        const knownTextNames = /(^|\/)(Dockerfile|Makefile|GNUmakefile|Gemfile|Podfile|Justfile|Procfile|LICENSE|NOTICE|README|\.gitignore|\.npmrc|\.editorconfig)$/i;
+        const nextEntries: ArchiveEntry[] = [];
+        const nextText: Record<string, string> = {};
+        for (const entry of entries) {
+          const isText = sourceExt.test(entry.name) || knownTextNames.test(entry.name);
+          nextEntries.push({ path: entry.name, text: isText });
+          if (isText) nextText[entry.name] = await entry.async('string');
+        }
+        archiveRef.current = zip;
+        setArchiveEntries(nextEntries); setArchiveText(nextText);
+        setSelectedArchivePath(nextEntries.find(entry => entry.text)?.path ?? '');
+        const h = zip.file('index.html') ?? zip.file(/(^|\/)index\.html$/i)?.[0];
+        const c = zip.file('style.css') ?? zip.file(/(^|\/)style\.css$/i)?.[0];
+        const j = zip.file('script.js') ?? zip.file(/(^|\/)script\.js$/i)?.[0];
         if (h) {
-          let content = await h.async('string');
-          const body = content.match(/<body[^>]*>([\\s\\S]*?)<script/i)?.[1] ?? content;
+          const content = await h.async('string');
+          const body = content.match(/<body[^>]*>([\s\S]*?)<script/i)?.[1] ?? content;
           setHtml(body); if (c) setCss(await c.async('string')); if (j) setJs(await j.async('string'));
-          setProjectName(file.name.replace(/\\.zip$/i, '')); setTab('code'); notify('项目导入成功');
-        } else notify('ZIP 中没有找到 index.html');
+        }
+        setProjectName(file.name.replace(/\.zip$/i, '')); setTab('code');
+        notify('已导入 ' + entries.length + ' 个文件，可查看和编辑文本源码');
       } catch { notify('无法读取此 ZIP 文件'); }
     };
     reader.readAsArrayBuffer(file);
   };
 
-  const editorValue = codeTab === 'html' ? html : codeTab === 'css' ? css : js;
+  const editorValue = selectedArchivePath && archiveEntries.length ? (archiveText[selectedArchivePath] ?? '') : codeTab === 'html' ? html : codeTab === 'css' ? css : js;
+  const languageForPath = (path: string) => {
+    const ext = path.split('.').pop()?.toLowerCase() ?? '';
+    const map: Record<string, string> = { kt: 'kotlin', kts: 'kotlin', java: 'java', py: 'python', pyw: 'python', js: 'javascript', mjs: 'javascript', cjs: 'javascript', jsx: 'javascript', ts: 'typescript', tsx: 'typescript', html: 'html', htm: 'html', css: 'css', scss: 'scss', less: 'less', json: 'json', jsonc: 'json', xml: 'xml', gradle: 'groovy', properties: 'ini', yaml: 'yaml', yml: 'yaml', toml: 'ini', md: 'markdown', sh: 'shell', bash: 'shell', sql: 'sql', go: 'go', rs: 'rust', c: 'c', h: 'c', cpp: 'cpp', cc: 'cpp', hpp: 'cpp', cs: 'csharp', swift: 'swift', dart: 'dart', php: 'php', rb: 'ruby', lua: 'lua', vue: 'html', svelte: 'html', svg: 'xml' };
+    return map[ext] ?? 'plaintext';
+  };
   const setEditorValue = (value?: string) => {
     const v = value ?? '';
-    if (codeTab === 'html') setHtml(v); else if (codeTab === 'css') setCss(v); else setJs(v);
+    if (selectedArchivePath && archiveEntries.length) setArchiveText(current => ({ ...current, [selectedArchivePath]: v }));
+    else if (codeTab === 'html') setHtml(v); else if (codeTab === 'css') setCss(v); else setJs(v);
     setSaved(false);
   };
 
@@ -165,7 +201,7 @@ export default function App() {
         <section className="canvas-area"><div className="canvas-caption"><span>画布</span><span>100%</span></div><div className={`canvas-shell ${device}`}><div ref={canvasRef} className="gjs-mount"/></div></section>
         <aside className="right-panel"><div className="panel-heading"><span>设计提示</span><Settings2 size={16}/></div><div className="inspector-empty"><div className="inspector-icon"><Sparkles size={21}/></div><b>选择画布中的元素</b><p>选中元素后，可以在这里调整内容、样式和布局。</p></div><div className="quick-tips"><b>快捷提示</b><p>双击文字可以直接编辑。</p><p>拖动组件可以调整页面结构。</p><p>切换到代码编辑可以精细修改。</p></div></aside>
       </>}
-      {tab==='code' && <section className="code-workspace"><div className="code-sidebar"><div className="code-sidebar-title">项目文件</div>{(['html','css','js'] as CodeTab[]).map((t)=><button key={t} className={codeTab===t?'file-active':''} onClick={()=>setCodeTab(t)}><FileCode2 size={15}/>{t==='html'?'index.html':t==='css'?'style.css':'script.js'}</button>)}</div><div className="monaco-area"><div className="editor-filebar"><span>{codeTab==='html'?'index.html':codeTab==='css'?'style.css':'script.js'}</span><span>已启用自动补全</span></div><Editor height="100%" language={codeTab==='html'?'html':codeTab==='css'?'css':'javascript'} theme="vs-dark" value={editorValue} onChange={setEditorValue} options={{minimap:{enabled:false},fontSize:14,wordWrap:'on',automaticLayout:true,scrollBeyondLastLine:false,padding:{top:18},tabSize:2}}/></div></section>}
+      {tab==='code' && <section className="code-workspace"><div className="code-sidebar"><div className="code-sidebar-title">项目文件</div>{archiveEntries.length ? <>{archiveEntries.map(entry=><button key={entry.path} className={selectedArchivePath===entry.path?'file-active':''} disabled={!entry.text} title={entry.text?entry.path:'二进制文件：保留原文件，不在文本编辑器中打开'} onClick={()=>{if(entry.text)setSelectedArchivePath(entry.path);}}><FileCode2 size={15}/><span className="archive-file-name">{entry.path}</span></button>)}<small className="archive-summary">{archiveEntries.length} 个文件 · {archiveEntries.filter(e=>e.text).length} 个可编辑文本文件</small></> : (['html','css','js'] as CodeTab[]).map((t)=><button key={t} className={codeTab===t?'file-active':''} onClick={()=>setCodeTab(t)}><FileCode2 size={15}/>{t==='html'?'index.html':t==='css'?'style.css':'script.js'}</button>)}</div><div className="monaco-area"><div className="editor-filebar"><span>{selectedArchivePath && archiveEntries.length ? selectedArchivePath : codeTab==='html'?'index.html':codeTab==='css'?'style.css':'script.js'}</span><span>{archiveEntries.length ? '源码文件编辑' : '已启用自动补全'}</span></div><Editor height="100%" language={selectedArchivePath && archiveEntries.length ? languageForPath(selectedArchivePath) : codeTab==='html'?'html':codeTab==='css'?'css':'javascript'} theme="vs-dark" value={editorValue} onChange={setEditorValue} options={{minimap:{enabled:false},fontSize:14,wordWrap:'on',automaticLayout:true,scrollBeyondLastLine:false,padding:{top:18},tabSize:2}}/></div></section>}
       {tab==='preview' && <section className="preview-workspace"><div className="preview-top"><span><span className="live-dot"/>本地实时预览</span><button onClick={()=>setTab('code')}><Code2 size={14}/>返回编辑</button></div><iframe title="应用实时预览" srcDoc={srcDoc} sandbox="allow-scripts allow-forms allow-modals" /></section>}
     </main>
     <footer className="statusbar"><div><span className="status-light"/>{saved?'所有更改已保存':'有未保存的更改'}<span className="status-sep"/>WebApp Studio v0.1.0</div><div>本地运行 · 无需账号</div></footer>
