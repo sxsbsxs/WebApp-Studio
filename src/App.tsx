@@ -37,7 +37,7 @@ export default function App() {
   const [projectList, setProjectList] = useState<Project[]>([]);
   const [showProjects, setShowProjects] = useState(false);
 
-  const srcDoc = useMemo(() => `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>${css}</style></head><body>${html}<script>${js.replaceAll('</script', '<\\/script')}<\/script></body></html>`, [html, css, js]);
+  const srcDoc = useMemo(() => `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>${css}</style></head><body>${html}<script>${js.split('</script').join('<\\/script')}<\/script></body></html>`, [html, css, js]);
 
   const notify = useCallback((message: string) => { setNotice(message); window.setTimeout(() => setNotice(''), 2600); }, []);
 
@@ -68,7 +68,7 @@ export default function App() {
     editor.setComponents(html);
     editor.setStyle(css);
     editor.on('update', () => { setHtml(editor.getHtml() ?? ''); setCss(editor.getCss() ?? ''); setSaved(false); });
-    editor.on('component:update', () => { setHtml(editor.getHtml()); setCss(editor.getCss()); setSaved(false); });
+    editor.on('component:update', () => { setHtml(editor.getHtml() ?? ''); setCss(editor.getCss() ?? ''); setSaved(false); });
     return () => { editor.destroy(); editorRef.current = null; };
   }, [tab]);
 
