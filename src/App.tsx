@@ -123,14 +123,17 @@ export default function App() {
       try {
         const zip = await JSZip.loadAsync(reader.result as ArrayBuffer);
         const entries = Object.values(zip.files).filter(entry => !entry.dir);
-        const sourceExt = /\.(html?|css|scss|sass|less|js|jsx|mjs|cjs|ts|tsx|vue|svelte|json|jsonc|json5|xml|svg|kt|kts|java|gradle|properties|py|pyi|pyw|ipynb|go|rs|c|h|cc|cpp|hpp|cs|fs|swift|m|mm|dart|php|rb|r|lua|sh|bash|zsh|ps1|bat|cmd|sql|yaml|yml|toml|ini|cfg|conf|env|md|mdx|txt|graphql|gql|proto)$/i;
-        const knownTextNames = /(^|\/)(Dockerfile|Makefile|GNUmakefile|Gemfile|Podfile|Justfile|Procfile|LICENSE|NOTICE|README|\.gitignore|\.npmrc|\.editorconfig)$/i;
         const nextEntries: ArchiveEntry[] = [];
         const nextText: Record<string, string> = {};
         for (const entry of entries) {
-          const isText = sourceExt.test(entry.name) || knownTextNames.test(entry.name);
+          const bytes = await entry.async('uint8array');
+          let decoded: string | null = null;
+          try {
+            if (!bytes.includes(0)) decoded = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+          } catch { decoded = null; }
+          const isText = decoded !== null;
           nextEntries.push({ path: entry.name, text: isText });
-          if (isText) nextText[entry.name] = await entry.async('string');
+          if (isText) nextText[entry.name] = decoded;
         }
         archiveRef.current = zip;
         setArchiveEntries(nextEntries); setArchiveText(nextText);
