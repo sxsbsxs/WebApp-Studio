@@ -37,7 +37,7 @@ export default function App() {
   const [projectList, setProjectList] = useState<Project[]>([]);
   const [showProjects, setShowProjects] = useState(false);
 
-  const srcDoc = useMemo(() => `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>${css}</style></head><body>${html}<script>${js.replace(/<\\/script/gi, '<\\\\/script')}<\/script></body></html>`, [html, css, js]);
+  const srcDoc = useMemo(() => `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>${css}</style></head><body>${html}<script>${js.replaceAll('</script', '<\\/script')}<\/script></body></html>`, [html, css, js]);
 
   const notify = useCallback((message: string) => { setNotice(message); window.setTimeout(() => setNotice(''), 2600); }, []);
 
@@ -67,7 +67,7 @@ export default function App() {
     editor.BlockManager.add('columns-block', { label: '双栏布局', category: '布局', content: '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:24px"><div>左侧内容</div><div>右侧内容</div></div>' });
     editor.setComponents(html);
     editor.setStyle(css);
-    editor.on('update', () => { setHtml(editor.getHtml()); setCss(editor.getCss()); setSaved(false); });
+    editor.on('update', () => { setHtml(editor.getHtml() ?? ''); setCss(editor.getCss() ?? ''); setSaved(false); });
     editor.on('component:update', () => { setHtml(editor.getHtml()); setCss(editor.getCss()); setSaved(false); });
     return () => { editor.destroy(); editorRef.current = null; };
   }, [tab]);
