@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Editor from '@monaco-editor/react';
 import grapesjs, { type Editor as GrapesEditor } from 'grapesjs';
 import JSZip from 'jszip';
+import ApkBuildPanel from './ApkBuildPanel';
 import {
   Blocks, Code2, Eye, FileCode2, FolderOpen, Download, Smartphone, Tablet, Monitor,
   Save, Plus, ChevronDown, Play, RotateCcw, Layers, Image, Type, Square, Layout,
@@ -37,6 +38,7 @@ export default function App() {
   const [notice, setNotice] = useState('');
   const [projectList, setProjectList] = useState<Project[]>([]);
   const [showProjects, setShowProjects] = useState(false);
+  const [showApkBuilder, setShowApkBuilder] = useState(false);
   const archiveRef = useRef<JSZip | null>(null);
   const [archiveEntries, setArchiveEntries] = useState<ArchiveEntry[]>([]);
   const [archiveText, setArchiveText] = useState<Record<string, string>>({});
@@ -172,6 +174,7 @@ export default function App() {
       <div className="project-title"><span className="status-dot"/><input value={projectName} onChange={e => {setProjectName(e.target.value);setSaved(false);}} aria-label="项目名称"/><ChevronDown size={14}/></div>
       <div className="top-actions">
         <button className="top-btn subtle" onClick={() => setShowProjects(!showProjects)}><FolderOpen size={16}/>项目</button>
+        <button className="top-btn apk-open-btn" onClick={() => setShowApkBuilder(true)}><Smartphone size={16}/>打包 APK</button>
         <button className="top-btn subtle" onClick={() => saveProject()}><Save size={16}/>{saved ? '已保存' : '保存'}</button>
         <button className="top-btn export-btn" onClick={exportZip}><Download size={16}/>导出 ZIP</button>
       </div>
@@ -209,5 +212,6 @@ export default function App() {
     </main>
     <footer className="statusbar"><div><span className="status-light"/>{saved?'所有更改已保存':'有未保存的更改'}<span className="status-sep"/>WebApp Studio v0.1.0</div><div>本地运行 · 无需账号</div></footer>
     {notice && <div className="toast"><Check size={16}/>{notice}</div>}
+    {showApkBuilder && <ApkBuildPanel onClose={() => setShowApkBuilder(false)} />}
   </div>;
 }
