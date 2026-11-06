@@ -133,7 +133,7 @@ export default function App() {
           } catch { decoded = null; }
           const isText = decoded !== null;
           nextEntries.push({ path: entry.name, text: isText });
-          if (isText) nextText[entry.name] = decoded;
+          if (decoded !== null) nextText[entry.name] = decoded;
         }
         archiveRef.current = zip;
         setArchiveEntries(nextEntries); setArchiveText(nextText);
