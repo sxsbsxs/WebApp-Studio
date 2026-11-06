@@ -1,0 +1,23 @@
+services:
+  apk-api:
+    build:
+      context: ./server
+    ports:
+      - "8787:8787"
+    environment:
+      PORT: 8787
+      MAX_CONCURRENT_BUILDS: 1
+      MAX_UPLOAD_BYTES: 209715200
+      BUILD_TIMEOUT_MS: 1500000
+      ALLOWED_ORIGIN: ${ALLOWED_ORIGIN:-*}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+    depends_on:
+      - android-builder
+  android-builder:
+    build:
+      context: ./server/builder
+    image: webapp-studio-android-builder:latest
+    entrypoint: ["sh", "-c", "exit 0"]
+    restart: "no"
