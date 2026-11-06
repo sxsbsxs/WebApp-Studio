@@ -3,10 +3,13 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "scripts": { "dev": "vite --host 0.0.0.0", "build": "tsc -b && vite build", "preview": "vite preview --host 0.0.0.0" },
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --host 0.0.0.0"
+  },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
-    "capacitor": "^0.0.1",
     "grapesjs": "^0.22.12",
     "jszip": "^3.10.1",
     "lucide-react": "^0.468.0",
