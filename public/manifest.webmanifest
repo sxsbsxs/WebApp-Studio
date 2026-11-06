@@ -1,0 +1,13 @@
+{
+  "name": "WebApp Studio",
+  "short_name": "WebApp Studio",
+  "description": "无需账号的在线可视化前端应用制作与打包工具",
+  "lang": "zh-CN",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#111216",
+  "theme_color": "#17181d",
+  "categories": ["developer", "productivity", "design"]
+}
