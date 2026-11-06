@@ -36,9 +36,26 @@ npm run preview
 
 构建产物位于 `dist/`，可部署到 GitHub Pages、Cloudflare Pages、Netlify 或任意静态网站托管服务。
 
-## Android APK
+## Android APK 打包服务
 
-在 GitHub 仓库的 **Actions** 中运行 **Build Android APK** 工作流。完成后从工作流 Artifacts 下载 `WebApp-Studio-debug-apk`。这是调试 APK；正式发布版本需要配置应用签名。
+网页已加入「打包 APK」入口：选择 Android Studio 项目 ZIP 后提交编译任务，可查看队列状态、构建日志并下载 Debug APK。服务端实现位于 `server/`，使用独立 Docker 构建容器执行用户项目。
+
+**重要：** GitHub Pages 只托管前端。要让在线打包真正可用，必须先在一台启用 Docker 的 Linux 主机部署 API 服务，并在前端构建时设置 `VITE_APK_API_URL` 指向该 API。当前仓库代码已包含服务端和 Docker Compose 配置，但不能在 GitHub Pages 上直接运行服务端。
+
+部署示例（Linux 主机已安装 Docker 和 Docker Compose）：
+
+```bash
+docker compose build
+docker compose up -d
+```
+
+前端构建时设置环境变量：
+
+```bash
+VITE_APK_API_URL=https://你的编译服务域名 npm run build
+```
+
+API 默认监听 8787 端口。建议通过 HTTPS 反向代理公开，并设置 `ALLOWED_ORIGIN` 为 Pages 站点域名。构建容器对 CPU、内存、进程数和运行时长有限制；公开部署前仍应配置网关级限流、磁盘配额和监控。该服务只生成 Debug APK；正式签名发布需要单独配置签名密钥。
 
 ## 隐私与数据
 
